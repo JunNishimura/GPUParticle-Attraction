@@ -1,0 +1,105 @@
+﻿#pragma kernel Attract
+#pragma kernel Update
+
+#include "ParticleDataCommon.cginc"
+#include "SimplexNoise3D.cginc"
+
+#define THREAD_NUM 512
+
+// Attraction buffer for read and write
+RWStructuredBuffer<float2> _AttractionBuffer;
+// Particle data buffer for read
+StructuredBuffer<ParticleData> _ParticleDataBufferRead;
+// Particle data buffer for read and write
+RWStructuredBuffer<ParticleData> _ParticleDataBufferWrite;
+
+float _DeltaTime;
+float _ElapsedTime;
+float _MaxSpeed;
+float _AttractStrength;
+float _AvoidWallStrength;
+float2 _MousePos;
+float3 _WallCenter;
+float3 _WallSize;
+
+float2 LimitSpeed(float2 vel, float max)
+{
+	float length = sqrt(dot(vel, vel));
+
+	// if speed is over max speed, map it to max speed
+	return (length > max&& length > 0) ? vel.xy * (max / length) : vel.xy;
+}
+
+// To make sure that all particles are in the simulation area
+float2 AvoidWall2D(float2 pos)
+{
+	float3 wc = _WallCenter.xyz;
+	float3 ws = _WallSize.xyz;
+	float2 acc = float2(0, 0);
+
+	// x
+	acc.x = (pos.x < wc.x - ws.x * 0.5) ? acc.x + 1.0 : acc.x;
+	acc.x = (pos.x > wc.x + ws.x * 0.5) ? acc.x - 1.0 : acc.x;
+
+	// y
+	acc.y = (pos.y < wc.y - ws.y * 0.5) ? acc.y + 1.0 : acc.y;
+	acc.y = (pos.y > wc.y + ws.y * 0.5) ? acc.y - 1.0 : acc.y;
+
+	return acc;
+}
+
+[numthreads(THREAD_NUM, 1, 1)]
+void Attract(uint3 id : SV_DispatchThreadID)
+{
+	uint idx = id.x;
+	float2 particlePos = _ParticleDataBufferRead[idx].position;
+
+	// calculate attraction vector
+	float2 attract = _MousePos - particlePos;
+	float sqDist = dot(attract, attract);
+	attract = normalize(attract);
+	// The closer to mousePos the particle is, the stronger attraction works
+	attract = (1 / sqDist) * _AttractStrength * attract;
+
+	// update attraction buffer
+	_AttractionBuffer[idx] = attract;
+}
+
+[numthreads(THREAD_NUM, 1, 1)]
+void Update(uint3 id : SV_DispatchThreadID)
+{
+	uint idx = id.x;
+	ParticleData p = _ParticleDataBufferWrite[idx];
+	float2 acc = _AttractionBuffer[idx];
+
+	// add force not to escape from the simulation area
+	acc += AvoidWall2D(p.position) * _AvoidWallStrength;
+
+	// update velocity
+	if (length(acc) > 0)
+	{
+		p.velocity += acc * _DeltaTime;
+	}
+	else
+	{
+		// decrease speed unless add new force
+		float friction = 0.6;
+		p.velocity -= p.velocity * friction * _DeltaTime;
+	}
+	p.velocity = LimitSpeed(p.velocity, _MaxSpeed);
+
+	// update position
+	p.position += p.velocity * _DeltaTime;
+
+	// update color
+	float speed = sqrt(dot(p.velocity, p.velocity));
+	float3 col = float3(1.0, p.velocity.x / speed, p.velocity.y / speed);
+	float alpha = 0.1 + 0.7 * speed / _MaxSpeed + 0.2 * saturate(dot(acc, acc));
+	p.color = float4(col, alpha);
+
+	// update particle
+	_ParticleDataBufferWrite[idx] = p;
+
+	// reset attraction 
+	_AttractionBuffer[idx] = float2(0, 0);
+}
