@@ -13,6 +13,7 @@ namespace GPUParticleAttraction
             public Vector2 velocity;
             public Color color;
             public float size;
+            public float uniqueSpeed;
         }
 
         const int THREAD_NUM = 512;
@@ -20,8 +21,8 @@ namespace GPUParticleAttraction
         #region particle parameters
         // BUGS: 
         // if MaxParticleNum is not a multiple of THREAD_NUM, some particles don't move
-        [Range(10000, 1000000)]
-        public int MaxParticleNum = 524288;
+        [Range(10000, 1048576)]
+        public int MaxParticleNum = 1048576;
         [Range(0.01f, 0.1f)]
         public float ParticleSize = 0.1f;
         public float AttractStrength = 10f;
@@ -35,12 +36,11 @@ namespace GPUParticleAttraction
 
         private ComputeBuffer _attractionBuffer;
         private ComputeBuffer _particleDataBuffer;
+        private Vector2 prevMousePos;
         private int attractKernel;
         private int updateKernel;
         private int threadGroupSize;
         private float camDepth;
-        private float elapsedTime = 0f;
-
 
         public ComputeBuffer GetParticleDataBuffer()
         {
@@ -81,14 +81,16 @@ namespace GPUParticleAttraction
         {
             if (Input.GetMouseButton(0))
             {
-                var pos = Input.mousePosition;
-                pos.z = camDepth;
-                pos = Camera.main.ScreenToWorldPoint(pos);
+                var mousePos = Input.mousePosition;
+                mousePos.z = camDepth;
+                mousePos = Camera.main.ScreenToWorldPoint(mousePos);
 
-                AttractParticle(pos);
+                var mouseVel = new Vector2( (mousePos.x - prevMousePos.x) / Time.deltaTime, (mousePos.y - prevMousePos.y) / Time.deltaTime );
+                prevMousePos = mousePos;
+
+                AttractParticle(mousePos, mouseVel);
             }
 
-            elapsedTime += Time.deltaTime;
             UpdateParticle();
         }
 
@@ -116,11 +118,12 @@ namespace GPUParticleAttraction
             for (int i = 0; i < MaxParticleNum; i++)
             {
                 attraction[i] = Vector2.zero;
-
-                particles[i].position = Random.insideUnitCircle * 5.0f;
-                particles[i].velocity = Random.insideUnitCircle * 0.1f;
-                particles[i].color    = Color.white;
-                particles[i].size     = ParticleSize;
+                 
+                particles[i].position    = Random.insideUnitCircle * 5.0f;
+                particles[i].velocity    = Random.insideUnitCircle * 0.1f;
+                particles[i].color       = Color.white;
+                particles[i].size        = ParticleSize;
+                particles[i].uniqueSpeed = Random.Range(0.5f, 1.5f);
             }
             _attractionBuffer.SetData(attraction);
             _particleDataBuffer.SetData(particles);
@@ -132,13 +135,14 @@ namespace GPUParticleAttraction
         /// <summary>
         /// execute Attract kernel
         /// </summary>
-        private void AttractParticle(Vector2 mousePos)
+        private void AttractParticle(Vector2 mousePos, Vector2 mouseVel)
         {
             ComputeShader cs = ParticleAttractCS;
 
             cs.SetFloat("_AttractStrength", AttractStrength);
             cs.SetFloat("_MaxSpeed", MaxSpeed);
             cs.SetVector("_MousePos", mousePos);
+            cs.SetVector("_MouseVel", mouseVel);
             cs.SetBuffer(attractKernel, "_AttractionBuffer", _attractionBuffer);
             cs.SetBuffer(attractKernel, "_ParticleDataBufferRead", _particleDataBuffer);
             cs.Dispatch(attractKernel, threadGroupSize, 1, 1);
@@ -152,10 +156,10 @@ namespace GPUParticleAttraction
             ComputeShader cs = ParticleAttractCS;
 
             cs.SetFloat("_DeltaTime", Time.deltaTime);
-            cs.SetFloat("_ElapsedTime", elapsedTime);
             cs.SetFloat("_AvoidWallStrength", AvoidWallStrength);
             cs.SetVector("_WallCenter", WallCenter);
             cs.SetVector("_WallSize", WallSize);
+            cs.SetVector("_MousePos", prevMousePos);
             cs.SetBuffer(updateKernel, "_AttractionBuffer", _attractionBuffer);
             cs.SetBuffer(updateKernel, "_ParticleDataBufferWrite", _particleDataBuffer);
             cs.Dispatch(updateKernel, threadGroupSize, 1, 1);

@@ -166,7 +166,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8f2721685e155a0408312b54be2b39c1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  MaxParticleNum: 1000000
+  MaxParticleNum: 1048576
   ParticleSize: 0.01
   AttractStrength: 20
   MaxSpeed: 6
@@ -199,6 +199,8 @@ GameObject:
   - component: {fileID: 963194228}
   - component: {fileID: 963194227}
   - component: {fileID: 963194226}
+  - component: {fileID: 963194229}
+  - component: {fileID: 963194230}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -224,7 +226,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0.21698111, g: 0.17297079, b: 0.17297079, a: 0}
+  m_BackGroundColor: {r: 0.1766198, g: 0.18478091, b: 0.254717, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -271,3 +273,34 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &963194229
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 963194225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9637e88b78346f640ae72c41a6045219, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  EffectMaterial: {fileID: 2100000, guid: e51a5f17681c3754cac270d60f4e097d, type: 2}
+  NoiseFadeSpeed: 0.05
+  NoiseMagnitude: 0.025
+--- !u!114 &963194230
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 963194225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f60520428e2ebad4a9cc023a8fe149b3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _timeStampStyle: 0
+  _imageTitle: img
+  _screenShotFolder: /ScreenShots/
+  _shotButtonActive: 0
